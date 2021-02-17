@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <UserSecretsId>FinanceApp.Server-18B09975-CF48-4365-BD4D-F1CF46CE5D78</UserSecretsId>
+    <WebProject_DirectoryAccessLevelKey>0</WebProject_DirectoryAccessLevelKey>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="5.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Client\FinanceApp.Client.csproj" />
+    <ProjectReference Include="..\Shared\FinanceApp.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="5.0.3" NoWarn="NU1605" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="5.0.3" NoWarn="NU1605" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Identity.Web.UI" Version="1.1.0" />
+  </ItemGroup>
+
+</Project>

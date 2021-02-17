@@ -1,0 +1,10 @@
+.page-header {
+    background-color: white;
+    border-bottom: solid 1px #E0E0E0;
+    box-sizing: border-box;
+    height: 55px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
