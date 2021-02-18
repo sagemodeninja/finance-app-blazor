@@ -4,6 +4,7 @@ Track finances.
 
 ### Features
 
++ Azure AD SSO.
 + Track finances.
 
 ### Credits
