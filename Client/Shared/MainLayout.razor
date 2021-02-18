@@ -1,8 +1,15 @@
 @inherits LayoutComponentBase
 
-<div class="page">
-    <PageHeader />
-    <div class="page-content">
+<BFUStack VerticalFill="true">
+    <BFUStackItem Style="height:auto;">
+        <PageHeader />
+    </BFUStackItem>
+    <BFUStackItem Style="overflow:auto;">
         @Body
-    </div>
-</div>
+    </BFUStackItem>
+    <BFUStackItem Style="height:auto;">
+        <div class="page-footer">
+            <BFUText>Copyright &copy; @DateTime.Now.Year Gary Antier</BFUText>
+        </div>
+    </BFUStackItem>
+</BFUStack>
