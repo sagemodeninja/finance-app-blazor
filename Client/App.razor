@@ -1,9 +1,15 @@
 ﻿<BFUTheme>
     <CascadingAuthenticationState>
-        <BFULayerHost>
+        <BFULayerHost Style="height:inherit;">
             <Router AppAssembly="@typeof(Program).Assembly" PreferExactMatches="@true">
                 <Found Context="routeData">
                     <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                        <Authorizing>
+                            <BFUSpinner Label="Authorizing..."
+                                        LabelPosition=@SpinnerLabelPosition.Bottom
+                                        Size=@SpinnerSize.Medium>
+                            </BFUSpinner>
+                        </Authorizing>
                         <NotAuthorized>
                             @if (!context.User.Identity.IsAuthenticated)
                             {
