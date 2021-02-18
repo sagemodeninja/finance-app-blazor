@@ -5,10 +5,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BlazorFluentUI.BFUButton" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFUCallout" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFUPersona" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFUSpinner" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFUStack" Version="4.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="5.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="5.0.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Authentication.WebAssembly.Msal" Version="5.0.3" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="5.0.0" />
+    <PackageReference Include="Polly" Version="7.2.1" />
     <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
   </ItemGroup>
 

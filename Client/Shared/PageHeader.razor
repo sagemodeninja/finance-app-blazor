@@ -1,0 +1,23 @@
+<div class="page-header">
+    <BFUStack Horizontal="true"
+              VerticalAlign=@Alignment.Center
+              VerticalFill="true">
+        <BFUStackItem Grow="true"
+                      DisableShrink="true"
+                      VerticalFill="false"
+                      Tokens=@StackItemTokens>
+            <h1 style="margin:0;">Finance Application</h1>
+        </BFUStackItem>
+        <BFUStackItem Shrink="true"
+                      VerticalFill="false"
+                      Tokens=@StackItemTokens>
+            <AccountMenu />
+        </BFUStackItem>
+    </BFUStack>
+</div>
+
+@code {
+    BFUStackItemTokens StackItemTokens = new BFUStackItemTokens {
+        Padding = "0 10px"
+    };
+}

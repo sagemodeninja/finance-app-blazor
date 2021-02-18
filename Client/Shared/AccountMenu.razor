@@ -1,0 +1,108 @@
+@using Polly
+@using System.Linq
+@using System.Text.Json.Serialization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IAccessTokenProvider TokenProvider
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject SignOutSessionStateManager SignOutManager
+
+<AuthorizeView>
+    <Authorized>
+        <BFUActionButton OnClick=PersonaClicked
+                         Style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;"
+                         @ref="accountMenuCalloutTarget">
+            @if(isUserLoaded) {
+                <BFUPersona Text="@user.GivenName"
+                            ImageInitials="@user.NameInitials"
+                            InitialsColor="Green"
+                            Size=@PersonaSize.Size40
+                            CoinSize="40"
+                            HidePersonalDetails="true" />
+            } else {
+                <BFUSpinner Size=@SpinnerSize.Medium />
+            }
+        </BFUActionButton>
+        @if(isAccountMenuVisible) {
+            <BFUCallout FabricComponentTarget=@accountMenuCalloutTarget
+                        DirectionalHint=@DirectionalHint.BottomRightEdge
+                        IsBeakVisible="false"
+                        GapSpace="5"
+                        MinPagePadding="0"
+                        OnDismiss=DismissAccountMenu>
+                        <BFUStack Tokens=@(new BFUStackTokens { Padding = "15px" })>
+                            <BFUPersona Text="@user.DisplayName"
+                                        SecondaryText=@(user.IsMailAvailable ? user.Mail : "Not available.")
+                                        InitialsColor=@PersonaInitialsColor.Green.ToString()
+                                        Size=@PersonaSize.Size40 />
+                        </BFUStack>
+            </BFUCallout>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    User user;
+    bool isUserLoaded = false;
+    bool isAccountMenuVisible = false;
+    BFUComponentBase accountMenuCalloutTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await GetMe();
+        isUserLoaded = true;
+
+        await base.OnInitializedAsync();
+    }
+
+    Task PersonaClicked() {
+        isAccountMenuVisible = !isAccountMenuVisible;
+        StateHasChanged();
+        
+        return Task.CompletedTask;
+    }
+
+    Task DismissAccountMenu() {
+        isAccountMenuVisible = false;
+        return Task.CompletedTask;
+    }
+
+    async Task<User> GetMe()
+    {
+        var retryPolicy = Policy.Handle<NullReferenceException>()
+                                .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromSeconds(0.5));
+                                
+        AccessTokenResult tokenResult = await TokenProvider.RequestAccessToken(
+                new AccessTokenRequestOptions
+                {
+                    Scopes = new[] { "https://graph.microsoft.com/User.Read" }
+                });
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            var client = ClientFactory.CreateClient("GraphAPI");
+            return await retryPolicy.ExecuteAsync(async () => await client.GetFromJsonAsync<User>("v1.0/me"));
+        }
+
+        await Task.Delay(1200);
+
+        return default;
+    }
+
+    private class User
+    {
+        [JsonPropertyName("displayName")]
+        public string DisplayName { get; set; }
+
+        [JsonPropertyName("givenName")]
+        public string GivenName { get; set; }
+
+        [JsonPropertyName("mail")]
+        public string Mail { get; set; }
+
+        public string NameInitials => GivenName.FirstOrDefault().ToString();
+
+        public bool IsMailAvailable => !string.IsNullOrEmpty(Mail);
+    }
+}
