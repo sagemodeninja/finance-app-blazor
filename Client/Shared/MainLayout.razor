@@ -4,8 +4,17 @@
     <BFUStackItem Style="height:auto;">
         <PageHeader />
     </BFUStackItem>
-    <BFUStackItem Style="position:relative;overflow:auto;padding:15px calc(100% / 20);">
-        @Body
+    <BFUStackItem Style="position:relative;overflow:auto;">
+        <BFUStack VerticalFill="true">
+            <BFUStackItem Style="height:auto;">
+                <div style="width:100%;">    
+                    <TemporaryMessages />
+                </div>
+            </BFUStackItem>
+            <BFUStackItem Style="padding:15px calc(100% / 20);">
+                @Body
+            </BFUStackItem>
+        </BFUStack>
     </BFUStackItem>
     <BFUStackItem Style="height:auto;">
         <div class="page-footer">
