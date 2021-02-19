@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="BlazorFluentUI.BFUButton" Version="4.0.2" />
     <PackageReference Include="BlazorFluentUI.BFUCallout" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFULink" Version="4.0.2" />
+    <PackageReference Include="BlazorFluentUI.BFUMessageBar" Version="4.0.2" />
     <PackageReference Include="BlazorFluentUI.BFUPersona" Version="4.0.2" />
     <PackageReference Include="BlazorFluentUI.BFUProgressIndicator" Version="4.0.2" />
     <PackageReference Include="BlazorFluentUI.BFUSpinner" Version="4.0.2" />

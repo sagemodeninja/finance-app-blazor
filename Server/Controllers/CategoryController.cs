@@ -24,11 +24,11 @@ namespace FinanceApp.Server.Controllers
         static readonly string[] scopeRequiredByApi = new string[] { "api.access" };
 
         [HttpGet]
-        public async Task<IEnumerable<Account>> GetAllAsync() {
+        public async Task<IActionResult> GetAllAsync() {
             HttpContext.VerifyUserHasAnyAcceptedScope(scopeRequiredByApi);
             
             var accounts = await _dbContext.Accounts.ToListAsync();
-            return accounts;
+            return Ok(accounts);
         }
     }
 }

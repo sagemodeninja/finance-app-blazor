@@ -1,24 +1,20 @@
-﻿@page "/"
+﻿@page "/accounts"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
 <div style="position:absolute;top:0;left:0;width:100%;">    
     <BFUMessageBar>
         Click 
-        <BFULink Href="/accounts">
+        <BFULink Href="/">
         here
         </BFULink>
-         to open temporary Accounts page.
+         to return to Index.
     </BFUMessageBar>
 </div>
 <BFUStack Horizontal="true"
           VerticalFill="true"
-          Wrap="true"
-          Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 20.0 } })
           Style="padding-top:50px;box-sizing:border-box;">
-    @for(var i=0; i<5; i++) {
-        <BFUStackItem>
-            <AccountCard />
-        </BFUStackItem>
-    }
+    <BFUStackItem>
+        <BFUText Variant=@TextType.Medium>Accounts</BFUText>
+    </BFUStackItem>
 </BFUStack>
