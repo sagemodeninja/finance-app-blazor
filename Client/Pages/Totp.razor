@@ -1,37 +1,84 @@
 @page "/totp"
-@using System.Net.Http
 @using Polly
+@using System.Net.Http
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using FinanceApp.Shared.Classes
 @inject IAccessTokenProvider TokenProvider
 @inject IHttpClientFactory ClientFactory
 @inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
-<p>TOTP</p>
-<div>
-    <QRCode Data="https://garyantier.com"
-            Size="350" />
-</div>
+<p>TOTP Demo</p>
+@if(graphUser != null)
+{
+    <div>
+            <p><span><b>Account Id:</b></span> @graphUser.AccountId</p>
+            <p><span><b>Display:</b></span> @graphUser.DisplayName</p>
+            <p><span><b>Email:</b></span> @graphUser.Mail</p>
+            <p><span><b>Message:</b></span> @message</p>
+    </div>
 
-<div>
-    @if(graphUser != null)
+    @if(user != null)
     {
-        <p><span><b>Account Id:</b></span> @graphUser.AccountId</p>
-        <p><span><b>Display:</b></span> @graphUser.DisplayName</p>
-        <p><span><b>Email:</b></span> @graphUser.Mail</p>
-        <p><span><b>TOTP Secret:</b></span> @totpSecret</p>
-        <p><span><b>Message:</b></span> @message</p>
-    }
-</div>
+        if(!user.HasRegisteredMFA)
+        {
+            <div>
+                <QRCode Label="@user.Email"
+                        Secret="@user.TOTPSecret"
+                        Size="250" />
+            </div>
 
-<BFUDefaultButton Text="Add User"
-                  OnClick=@AddUser
-                  Disabled=@(graphUser is null) />
+            if(mfaToken is null) {
+                <BFUDefaultButton Text="Generate MFA Token"
+                                OnClick=@GenerateMFATokenAsync />
+            }
+            else
+            {
+                <BFUStack Horizontal="true"
+                          Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
+                    <BFUStackItem>
+                        <BFUDefaultButton Text="Validate MFA Token"
+                                        OnClick=@ValidateMFATokenAsync />
+                    </BFUStackItem>
+                    <BFUStackItem>
+                        <BFUDefaultButton Text="Clear MFA Token"
+                                        OnClick=@ClearMFATokenAsync />
+                    </BFUStackItem>
+                </BFUStack>
+            }
+
+        }
+        else if (user.EnableMFA)
+        {
+            <p>Ready for MFA!</p>
+        }
+        else
+        {
+            <p>MFA is disabled!</p>
+        }
+    }
+    else
+    {
+        <BFUSpinner Label="Loading..."
+                    LabelPosition=@SpinnerLabelPosition.Bottom
+                    Size=@SpinnerSize.Medium>
+        </BFUSpinner>
+    }
+}
+else
+{
+    <BFUSpinner Label="Loading..."
+                LabelPosition=@SpinnerLabelPosition.Bottom
+                Size=@SpinnerSize.Medium>
+    </BFUSpinner>
+}
 
 @code {
     GraphUser graphUser;
     User user;
     string message;
-    string totpSecret;
+    bool isUserInfoLoaded = false;
+    MFAToken mfaToken;
 
     protected override async Task OnInitializedAsync()
     {
@@ -41,6 +88,8 @@
             AccountId = graphUser.AccountId,
             Email = graphUser.Mail
         };
+        await AddUserAsync();
+        mfaToken = await sessionStorage.GetItemAsync<MFAToken>("MFAToken");
         await base.OnInitializedAsync();
     }
 
@@ -64,18 +113,53 @@
         return default;
     }
 
-    async Task AddUser() {
+    async Task AddUserAsync()
+    {
         if(user != null)
         {
             var response = await Http.PostAsJsonAsync("user", user);
-            var insertedUser = await response.Content.ReadFromJsonAsync<User>();
-            
-            totpSecret = insertedUser.TOTPSecret;
-            message = $"Account {insertedUser.Email}::{insertedUser.AccountId} is added as {insertedUser.Id}";
+            user = await response.Content.ReadFromJsonAsync<User>();
+            message = $"Account {user.Email} was added.";
         }
         else
         {
             message = "Error: User object is null.";
         }
+    }
+
+    async Task GenerateMFATokenAsync()
+    {
+        if(user != null) {
+            mfaToken = await Http.GetFromJsonAsync<MFAToken>($"user/mfatoken/generate/{user.AccountId}");
+            await sessionStorage.SetItemAsync<MFAToken>("MFAToken", mfaToken);
+
+            message = "MFA token was created.";
+        }
+        else
+        {
+            message = "Error: User object is null.";
+        }
+    }
+
+    async Task ValidateMFATokenAsync()
+    {
+        if(user != null) {
+            HttpResponseMessage response = await Http.PutAsJsonAsync<MFAToken>($"user/mfatoken/validate", mfaToken);
+            MFAToken token = await response.Content.ReadFromJsonAsync<MFAToken>();
+            
+            string isValid = token.IsValid ? "is" : "is not";
+            message = $"MFA Token {isValid} valid.";
+        }
+        else
+        {
+            message = "Error: User object is null.";
+        }
+    }
+
+    async Task ClearMFATokenAsync()
+    {
+        await sessionStorage.RemoveItemAsync("MFAToken");
+        mfaToken = null;
+        message = "MFA token was cleared.";
     }
 }

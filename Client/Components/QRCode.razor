@@ -9,15 +9,27 @@
     private bool isQrGenerated = false;
 
     [Parameter]
-    public string Data { get; set; }
+    public string Secret { get; set; }
+
+    [Parameter]
+    public string Label { get; set; }
 
     [Parameter]
     public int? Size { get; set; }
 
     protected override async Task OnParametersSetAsync(){
+        // OTP Payload
+        PayloadGenerator.OneTimePassword generator = new PayloadGenerator.OneTimePassword
+        {
+            Secret = this.Secret,
+            Issuer = "Microsoft",
+            Label  = this.Label
+        };
+        string payload = generator.ToString();
+        
         // QRCode generator...
         QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        QRCodeData qrCodeData = qrGenerator.CreateQrCode(Data, QRCodeGenerator.ECCLevel.Q);
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
         PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
         
         // Image...

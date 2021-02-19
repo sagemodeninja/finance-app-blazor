@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using BlazorFluentUI;
+using Blazored.SessionStorage;
 
 namespace FinanceApp.Client
 {
@@ -40,6 +41,8 @@ namespace FinanceApp.Client
                 .AddHttpMessageHandler<GraphAPIAuthorizationMessageHandler>();
 
             #endregion
+
+            builder.Services.AddBlazoredSessionStorage();
 
             await builder.Build().RunAsync();
         }

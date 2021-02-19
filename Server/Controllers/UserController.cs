@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Options;
 using FinanceApp.Server.Data;
 using FinanceApp.Server.Classes;
 using FinanceApp.Shared.Models;
+using FinanceApp.Shared.Classes;
 
 namespace FinanceApp.Server.Controllers
 {
@@ -49,18 +51,40 @@ namespace FinanceApp.Server.Controllers
         {
             try
             {
-                // Generate TOTP secret based on account id and secret key.
-                string totpSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
-                user.TOTPSecret = totpSecret;
+                // Checks if user already exist.
+                if(_dbContext.Users.Any(u => u.AccountId == user.AccountId)) {
+                    user = _dbContext.Users.Single(u => u.AccountId == user.AccountId);
+                    return Ok(user);
+                } else {
+                    // Generate TOTP secret based on account id and secret key.
+                    string totpSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
+                    user.TOTPSecret = totpSecret;
 
-                _dbContext.Users.Add(user);
-                await _dbContext.SaveChangesAsync();
-                return Ok(user);
+                    _dbContext.Users.Add(user);
+                    await _dbContext.SaveChangesAsync();
+                    return Ok(user);
+                }
             }
             catch
             {
                 return StatusCode(500);
             }
+        }
+
+        [HttpGet]
+        [Route("mfatoken/generate/{identity:guid}")]
+        public async Task<IActionResult> GenerateMFAToken(Guid identity)
+        {
+            MFAToken token = await MFAToken.GenerateAsync(identity.ToString(), _options.MFATokenHashKey);
+            return Ok(token);
+        }
+
+        [HttpPut]
+        [Route("mfatoken/validate")]
+        public async Task<IActionResult> ValidateMFAToken(MFAToken token)
+        {
+            await token.ValidateAsync(_options.MFATokenHashKey);
+            return Ok(token);
         }
 
         private static async Task<string> GenerateUserTOTPSecretAsync(Guid accountId, string hashKey)
