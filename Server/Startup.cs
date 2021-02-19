@@ -5,8 +5,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using FinanceApp.Server.Data;
 using Microsoft.EntityFrameworkCore;
+using FinanceApp.Server.Data;
+using FinanceApp.Server.Classes;
 
 namespace FinanceApp.Server
 {
@@ -28,6 +29,8 @@ namespace FinanceApp.Server
             
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApi(Configuration.GetSection("AzureAd"));
+
+            services.Configure<FinanceAppOptions>(Configuration.GetSection(FinanceAppOptions.Section));
 
             services.AddControllersWithViews();
             services.AddRazorPages();

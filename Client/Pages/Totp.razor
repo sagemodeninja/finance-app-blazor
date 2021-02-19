@@ -1,4 +1,10 @@
 @page "/totp"
+@using System.Net.Http
+@using Polly
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IAccessTokenProvider TokenProvider
+@inject IHttpClientFactory ClientFactory
+@inject HttpClient Http
 
 <p>TOTP</p>
 <div>
@@ -6,6 +12,70 @@
             Size="350" />
 </div>
 
+<div>
+    @if(graphUser != null)
+    {
+        <p><span><b>Account Id:</b></span> @graphUser.AccountId</p>
+        <p><span><b>Display:</b></span> @graphUser.DisplayName</p>
+        <p><span><b>Email:</b></span> @graphUser.Mail</p>
+        <p><span><b>TOTP Secret:</b></span> @totpSecret</p>
+        <p><span><b>Message:</b></span> @message</p>
+    }
+</div>
+
+<BFUDefaultButton Text="Add User"
+                  OnClick=@AddUser
+                  Disabled=@(graphUser is null) />
+
 @code {
-    
+    GraphUser graphUser;
+    User user;
+    string message;
+    string totpSecret;
+
+    protected override async Task OnInitializedAsync()
+    {
+        graphUser = await GetGraphUser();
+        user = new User
+        {
+            AccountId = graphUser.AccountId,
+            Email = graphUser.Mail
+        };
+        await base.OnInitializedAsync();
+    }
+
+    async Task<GraphUser> GetGraphUser()
+    {
+        var retryPolicy = Policy.Handle<NullReferenceException>()
+                                .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromSeconds(0.5));
+                                
+        AccessTokenResult tokenResult = await TokenProvider.RequestAccessToken(
+                new AccessTokenRequestOptions
+                {
+                    Scopes = new[] { "https://graph.microsoft.com/User.Read" }
+                });
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            var client = ClientFactory.CreateClient("GraphAPI");
+            return await retryPolicy.ExecuteAsync(async () => await client.GetFromJsonAsync<GraphUser>("v1.0/me"));
+        }
+
+        return default;
+    }
+
+    async Task AddUser() {
+        if(user != null)
+        {
+            var response = await Http.PostAsJsonAsync("user", user);
+            var insertedUser = await response.Content.ReadFromJsonAsync<User>();
+            
+            totpSecret = insertedUser.TOTPSecret;
+            message = $"Account {insertedUser.Email}::{insertedUser.AccountId} is added as {insertedUser.Id}";
+        }
+        else
+        {
+            message = "Error: User object is null.";
+        }
+    }
 }

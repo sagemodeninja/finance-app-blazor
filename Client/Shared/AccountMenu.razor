@@ -1,6 +1,4 @@
 @using Polly
-@using System.Linq
-@using System.Text.Json.Serialization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @inject IAccessTokenProvider TokenProvider
@@ -50,7 +48,7 @@
 </AuthorizeView>
 
 @code {
-    User user;
+    GraphUser user;
     bool isUserLoaded = false;
     bool isAccountMenuVisible = false;
     BFUComponentBase accountMenuCalloutTarget;
@@ -75,7 +73,7 @@
         return Task.CompletedTask;
     }
 
-    async Task<User> GetMe()
+    async Task<GraphUser> GetMe()
     {
         var retryPolicy = Policy.Handle<NullReferenceException>()
                                 .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromSeconds(0.5));
@@ -89,27 +87,9 @@
         if (tokenResult.TryGetToken(out var token))
         {
             var client = ClientFactory.CreateClient("GraphAPI");
-            return await retryPolicy.ExecuteAsync(async () => await client.GetFromJsonAsync<User>("v1.0/me"));
+            return await retryPolicy.ExecuteAsync(async () => await client.GetFromJsonAsync<GraphUser>("v1.0/me"));
         }
 
-        await Task.Delay(1200);
-
         return default;
-    }
-
-    private class User
-    {
-        [JsonPropertyName("displayName")]
-        public string DisplayName { get; set; }
-
-        [JsonPropertyName("givenName")]
-        public string GivenName { get; set; }
-
-        [JsonPropertyName("mail")]
-        public string Mail { get; set; }
-
-        public string NameInitials => GivenName.FirstOrDefault().ToString();
-
-        public bool IsMailAvailable => !string.IsNullOrEmpty(Mail);
     }
 }

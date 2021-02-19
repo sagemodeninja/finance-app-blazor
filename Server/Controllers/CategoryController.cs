@@ -17,7 +17,8 @@ namespace FinanceApp.Server.Controllers
     {
         private readonly FinanceAppContext _dbContext;
 
-        public CategoryController(FinanceAppContext context){
+        public CategoryController(FinanceAppContext context)
+        {
             _dbContext = context;
         }
 
