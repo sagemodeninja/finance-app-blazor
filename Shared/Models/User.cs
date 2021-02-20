@@ -1,8 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceApp.Shared.Models
 {
+    [Index(nameof(AccountId), IsUnique = true)]
     public class User
     {
         public long Id { get; set; }

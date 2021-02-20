@@ -1,5 +1,6 @@
 @page "/totp"
 @using Polly
+@using System.Net
 @using System.Net.Http
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using FinanceApp.Shared.Classes
@@ -11,30 +12,72 @@
 <p>TOTP Demo</p>
 @if(graphUser != null)
 {
-    <div>
-            <p><span><b>Account Id:</b></span> @graphUser.AccountId</p>
-            <p><span><b>Display:</b></span> @graphUser.DisplayName</p>
-            <p><span><b>Email:</b></span> @graphUser.Mail</p>
+    if(!string.IsNullOrEmpty(message)) {
+        <div>
             <p><span><b>Message:</b></span> @message</p>
-    </div>
+        </div>
+    }
 
     @if(user != null)
     {
         if(!user.HasRegisteredMFA)
         {
-            <div>
-                <QRCode Label="@user.Email"
-                        Secret="@user.TOTPSecret"
-                        Size="250" />
+            <div style="height:100%;width:100%;display:flex;align-items:center;justify-content:center;">
+            <BFUStack Horizontal="true">
+                <BFUStackItem>
+                    <QRCode Label="@user.Email"
+                            Secret="@user.TOTPSecret"
+                            Size="280" />
+                </BFUStackItem>
+                <BFUStackItem>
+                    <BFUStack VerticalFill="true"
+                              Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "15px" })>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Large
+                                    Style="font-weight:700;">
+                                    Additional security verification
+                            </BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>
+                                Secure your account by enabling <span style="font-weight:bold;">Multi-Factor Authentication</span>.
+                            </BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>Complete the following steps to configure MFA through authenticator app.</BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUStack Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "10px 0 10px 20px" })>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>1. Install the Microsoft authenticator app for Windows Phone, Andriod or iOs.</BFUText>
+                                </BFUStackItem>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>2. In the app, add an account and choose "Work or school account".</BFUText>
+                                </BFUStackItem>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>3. Scan the QR code on the side.</BFUText>
+                                </BFUStackItem>
+                            </BFUStack>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>If the app displays a six-digit code, you are done!</BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem Align=@Alignment.End>
+                            <BFUPrimaryButton Text="Next"
+                                              Style="font-size:12px;" />
+                        </BFUStackItem>
+                    </BFUStack>
+                </BFUStackItem>
+            </BFUStack>
             </div>
 
             if(mfaToken is null) {
-                <BFUDefaultButton Text="Generate MFA Token"
-                                OnClick=@GenerateMFATokenAsync />
+                @* <BFUDefaultButton Text="Generate MFA Token"
+                                OnClick=@GenerateMFATokenAsync /> *@
             }
             else
             {
-                <BFUStack Horizontal="true"
+                @* <BFUStack Horizontal="true"
                           Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
                     <BFUStackItem>
                         <BFUDefaultButton Text="Validate MFA Token"
@@ -44,7 +87,7 @@
                         <BFUDefaultButton Text="Clear MFA Token"
                                         OnClick=@ClearMFATokenAsync />
                     </BFUStackItem>
-                </BFUStack>
+                </BFUStack> *@
             }
 
         }
@@ -88,7 +131,9 @@ else
             AccountId = graphUser.AccountId,
             Email = graphUser.Mail
         };
-        await AddUserAsync();
+
+        user = await GetUserAsync(graphUser);
+
         mfaToken = await sessionStorage.GetItemAsync<MFAToken>("MFAToken");
         await base.OnInitializedAsync();
     }
@@ -113,18 +158,41 @@ else
         return default;
     }
 
-    async Task AddUserAsync()
+    async Task<User> GetUserAsync(GraphUser graphUser)
     {
-        if(user != null)
+        Guid accountId = graphUser.AccountId;
+        string email = graphUser.Mail;
+
+        try
         {
-            var response = await Http.PostAsJsonAsync("user", user);
-            user = await response.Content.ReadFromJsonAsync<User>();
-            message = $"Account {user.Email} was added.";
+            return await Http.GetFromJsonAsync<User>($"user/account/{accountId}");
         }
-        else
+        catch (HttpRequestException ex)
         {
-            message = "Error: User object is null.";
+            if(ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                User user = new User
+                {
+                    AccountId = accountId,
+                    Email = email
+                };
+
+                return await AddUserAsync(user);
+            }
+            else
+            {
+                throw ex;
+            }
         }
+    }
+
+    async Task<User> AddUserAsync(User user)
+    {
+        var response = await Http.PostAsJsonAsync("user", user);
+        user = await response.Content.ReadFromJsonAsync<User>();
+        
+        message = $"Account {user.Email} was added.";
+        return user;
     }
 
     async Task GenerateMFATokenAsync()

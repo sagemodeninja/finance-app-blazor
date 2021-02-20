@@ -37,38 +37,30 @@ namespace FinanceApp.Server.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetByAccountId(Guid accountId)
+        [Route("account/{accountId:guid}")]
+        public IActionResult GetByAccountId(Guid accountId)
         {
-            try {
-                return Ok();
-            } catch {
-                return BadRequest();
+            User user = _dbContext.Users.SingleOrDefault(u => u.AccountId == accountId);
+            if(user != null)
+            {
+                return Ok(user);
+            }
+            else
+            {
+                return NotFound();
             }
         }
 
         [HttpPost]
         public async Task<IActionResult> AddUser(User user)
         {
-            try
-            {
-                // Checks if user already exist.
-                if(_dbContext.Users.Any(u => u.AccountId == user.AccountId)) {
-                    user = _dbContext.Users.Single(u => u.AccountId == user.AccountId);
-                    return Ok(user);
-                } else {
-                    // Generate TOTP secret based on account id and secret key.
-                    string totpSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
-                    user.TOTPSecret = totpSecret;
+            // Generate TOTP secret based on account id and hash key.
+            user.TOTPSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
 
-                    _dbContext.Users.Add(user);
-                    await _dbContext.SaveChangesAsync();
-                    return Ok(user);
-                }
-            }
-            catch
-            {
-                return StatusCode(500);
-            }
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+            
+            return Ok(user);
         }
 
         [HttpGet]
