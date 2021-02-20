@@ -1,0 +1,39 @@
+@using FinanceApp.Shared.Classes
+@inject NavigationManager Navigation
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject HttpClient Http
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        MFAToken token = await sessionStorage.GetItemAsync<MFAToken>("MFAToken");
+        
+        if(token is null)
+        {
+            ChallengeMFA();
+        }
+        else
+        {
+            var response = await Http.PutAsJsonAsync<MFAToken>("user/mfatoken/validate", token);
+            if(response.IsSuccessStatusCode)
+            {
+                token = await response.Content.ReadFromJsonAsync<MFAToken>();
+                if(!token.IsValid)
+                {
+                    ChallengeMFA();
+                }
+            }
+            else
+            {
+                string message = await response.Content.ReadAsStringAsync();
+                Navigation.NavigateTo($"error/{Uri.EscapeDataString(message)}");
+            }
+        }
+
+    }
+
+    void ChallengeMFA()
+    {
+        Navigation.NavigateTo("mfa");
+    }
+}

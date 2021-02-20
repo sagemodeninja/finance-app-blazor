@@ -1,4 +1,6 @@
-@page "/totp"
+@layout EmptyLayout
+@page "/mfa"
+
 @using Polly
 @using System.Net
 @using System.Net.Http
@@ -28,7 +30,8 @@
                     {
                         <QRCode Label="@user.Email"
                                 Secret="@user.TOTPSecret"
-                                Size="280" />
+                                Size="280">
+                        </QRCode>
                     }
                     else
                     {
@@ -74,7 +77,8 @@
                         <BFUStackItem Align=@Alignment.End>
                             <BFUPrimaryButton Text="Next"
                                               OnClick=@SkipToVerifyRegisteredMFA
-                                              Style="font-size:12px;" />
+                                              Style="font-size:12px;">
+                            </BFUPrimaryButton>
                         </BFUStackItem>
                     </BFUStack>
                 </BFUStackItem>
@@ -83,27 +87,19 @@
         else if (totpStage == TOTPStage.Verify)
         {
             <TOTPVerification UserId="@user.Id"
-                              OnVerified=@TOTPVerified></TOTPVerification>
+                              OnVerified=@TOTPVerified>
+            </TOTPVerification>
+        }
+        else if (totpStage == TOTPStage.TaggingRegistered)
+        {
+            <BFUSpinner Label="Finalizing..."
+                        LabelPosition=@SpinnerLabelPosition.Bottom
+                        Size=@SpinnerSize.Medium>
+            </BFUSpinner>
         }
         else if (totpStage == TOTPStage.Done)
         {
-            <BFUStack Horizontal="true"
-                        Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
-                <BFUStackItem>
-                    <BFUDefaultButton Text="Validate MFA Token"
-                                    OnClick=@ValidateMFATokenAsync>
-                    </BFUDefaultButton>
-                </BFUStackItem>
-                <BFUStackItem>
-                    <BFUDefaultButton Text="Clear MFA Token"
-                                    OnClick=@ClearMFATokenAsync>
-                    </BFUDefaultButton>
-                </BFUStackItem>
-            </BFUStack>
-        }
-        else
-        {
-            <p>Wait what!?</p>
+            <RedirectToMain />
         }
     }
     else
@@ -149,7 +145,6 @@ else
             }
         }
 
-        mfaToken = await sessionStorage.GetItemAsync<MFAToken>("MFAToken");
         await base.OnInitializedAsync();
     }
 
@@ -228,40 +223,24 @@ else
 
     async Task TOTPVerified(MFAToken token)
     {
-        totpStage = TOTPStage.Done;
         await sessionStorage.SetItemAsync<MFAToken>("MFAToken", token);
-        mfaToken = token;
-    }
 
-    async Task ValidateMFATokenAsync()
-    {
-        if(user != null) {
-            HttpResponseMessage response = await Http.PutAsJsonAsync<MFAToken>($"user/mfatoken/validate", mfaToken);
-            MFAToken token = await response.Content.ReadFromJsonAsync<MFAToken>();
-            
-            string isValid = token.IsValid ? "is" : "is not";
-            messageType = MessageBarType.Info;
-            message = $"MFA Token {isValid} valid.";
-        }
-        else
+        if(!user.HasRegisteredMFA)
         {
-            messageType = MessageBarType.Error;
-            message = "Error: User object is null.";
+            totpStage = TOTPStage.TaggingRegistered;
+            // Note: Tag user as registered to MFA
+            await Http.PutAsJsonAsync<User>("user/mfa/register", user);
         }
-    }
 
-    async Task ClearMFATokenAsync()
-    {
-        await sessionStorage.RemoveItemAsync("MFAToken");
-        mfaToken = null;
-        messageType = MessageBarType.Info;
-        message = "MFA token was cleared.";
+        totpStage = TOTPStage.Done;
+        mfaToken = token;
     }
 
     private enum TOTPStage
     {
         Registration,
         Verify,
+        TaggingRegistered,
         Done
     }
 }

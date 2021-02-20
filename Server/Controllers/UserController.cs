@@ -92,7 +92,8 @@ namespace FinanceApp.Server.Controllers
             byte[] totpSecret = Base32Encoding.ToBytes(user.TOTPSecret);
             Totp totp = new Totp(totpSecret);
 
-            bool isValid = totp.VerifyTotp(request.Code, out var timeStepMatched);
+            VerificationWindow window = new VerificationWindow(previous: 1, future: 1);
+            bool isValid = totp.VerifyTotp(request.Code, out var _, window);
             if(isValid)
             {
                 MFAToken token = await MFAToken.GenerateAsync(user.AccountId, user.TOTPSecret);
@@ -123,7 +124,7 @@ namespace FinanceApp.Server.Controllers
         public async Task<IActionResult> TagRegisteredMFA(User user)
         {
             user.HasRegisteredMFA = true;
-            user.EnableMFA = false;
+            user.EnableMFA = true;
             _dbContext.Users.Update(user);
             
             await _dbContext.SaveChangesAsync();

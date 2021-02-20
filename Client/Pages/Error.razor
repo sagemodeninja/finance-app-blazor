@@ -1,0 +1,9 @@
+@layout EmptyLayout
+@page "/error/{message}"
+
+<BFUText>@Message</BFUText>
+
+@code {
+    [Parameter]
+    public string Message { get; set; }
+}
