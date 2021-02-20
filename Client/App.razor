@@ -5,10 +5,12 @@
                 <Found Context="routeData">
                     <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                         <Authorizing>
-                            <BFUSpinner Label="Authorizing..."
-                                        LabelPosition=@SpinnerLabelPosition.Bottom
-                                        Size=@SpinnerSize.Medium>
-                            </BFUSpinner>
+                            <LayoutView Layout="@typeof(EmptyLayout)">
+                                <BFUSpinner Label="Authorizing..."
+                                            LabelPosition=@SpinnerLabelPosition.Bottom
+                                            Size=@SpinnerSize.Medium>
+                                </BFUSpinner>
+                            </LayoutView>
                         </Authorizing>
                         <NotAuthorized>
                             @if (!context.User.Identity.IsAuthenticated)
@@ -17,7 +19,9 @@
                             }
                             else
                             {
-                                <p>You are not authorized to access this resource.</p>
+                                <LayoutView Layout="@typeof(EmptyLayout)">
+                                    <p>You are not authorized to access this resource.</p>
+                                </LayoutView>
                             }
                         </NotAuthorized>
                     </AuthorizeRouteView>

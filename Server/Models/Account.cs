@@ -1,8 +1,10 @@
 using FinanceApp.Server.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinanceApp.Server.Models {
-    public class Account {
+namespace FinanceApp.Server.Models
+{
+    public class Account
+    {
         public long Id { get; set; }
         [MaxLength(100)]
         public string Title { get; set; }
@@ -10,5 +12,7 @@ namespace FinanceApp.Server.Models {
         public AccountStatus Status { get; set; }
 
         public Category Category { get; set; }
+
+        // TODO: Add relationship to User.
     }
 }

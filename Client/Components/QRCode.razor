@@ -1,0 +1,47 @@
+@using QRCoder
+
+<img src=@(isQrGenerated ? qrCode : "")
+     style="@style">
+
+@code {
+    private string style;
+    private string qrCode;
+    private bool isQrGenerated = false;
+
+    [Parameter]
+    public string Secret { get; set; }
+
+    [Parameter]
+    public string Label { get; set; }
+
+    [Parameter]
+    public int? Size { get; set; }
+
+    protected override async Task OnParametersSetAsync(){
+        // OTP Payload
+        PayloadGenerator.OneTimePassword generator = new PayloadGenerator.OneTimePassword
+        {
+            Secret = this.Secret,
+            Issuer = "Microsoft",
+            Label  = this.Label
+        };
+        string payload = generator.ToString();
+        
+        // QRCode generator...
+        QRCodeGenerator qrGenerator = new QRCodeGenerator();
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
+        PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
+        
+        // Image...
+        byte[] qrCodeBytes = qrCode.GetGraphic(20);
+        string qrCode64 = Convert.ToBase64String(qrCodeBytes);
+        this.qrCode = $"data:image/png;base64,{qrCode64}";
+        this.isQrGenerated = true;
+
+        // Styles...
+        int size = this.Size ?? 100;
+        this.style = $"height:{size}px;width:{size}px";
+
+        await base.OnParametersSetAsync();
+    }
+}

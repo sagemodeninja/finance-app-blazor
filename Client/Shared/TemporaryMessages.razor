@@ -1,0 +1,43 @@
+@using System.Collections.Generic;
+
+@if(_tempLinks is null)
+{
+    <BFUSpinner Size=@SpinnerSize.Medium></BFUSpinner>
+}
+else
+{
+    <BFUMessageBar>
+        @foreach(var link in _tempLinks)
+        {
+            <span>Click <BFULink Href=@link.Path>here</BFULink> to open temporary @link.Name page.</span>
+            <br />
+        }
+    </BFUMessageBar>
+}
+
+@code {
+    List<TempLinks> _tempLinks { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        _tempLinks = new List<TempLinks>
+        {
+            new TempLinks("Index", "/"),
+            new TempLinks("Account", "/accounts"),
+            new TempLinks("TOTP demo", "/totp")
+        };
+
+        return base.OnInitializedAsync();
+    }
+
+    private class TempLinks {
+        public string Name { get; set; }
+        public string Path { get; set; }
+
+        public TempLinks (string name, string path)
+        {
+            Name = name;
+            Path = path;
+        }
+    }
+}

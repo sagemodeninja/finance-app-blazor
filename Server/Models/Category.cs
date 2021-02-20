@@ -2,8 +2,10 @@ using FinanceApp.Server.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 
-namespace FinanceApp.Server.Models {
-    public class Category {
+namespace FinanceApp.Server.Models
+{
+    public class Category
+    {
         public long Id { get; set; }
         [MaxLength(100)]
         public string Title { get; set; }
@@ -13,5 +15,7 @@ namespace FinanceApp.Server.Models {
         public GenericStatus Status { get; set; }
 
         public ICollection<Account> Accounts { get; set; }
+
+        // TODO: Add relationship to User.
     }
 }

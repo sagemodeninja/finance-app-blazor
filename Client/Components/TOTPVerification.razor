@@ -1,0 +1,97 @@
+@using System.Net
+@using System.Net.Http
+@using FinanceApp.Shared.Classes
+@inject HttpClient Http
+
+<div style="border:solid 1px #e0e0e0;border-radius:3px;width:350px;">
+    @if(isVerificationFailed)
+    {
+        <BFUMessageBar MessageBarType="MessageBarType.Error">
+            @verificationFailedMessage
+        </BFUMessageBar>
+    }
+    <BFUStack Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "40px" })>
+        <BFUStackItem>
+            <BFUText Variant=@TextType.XLarge
+                    Style="font-weight:700;">
+                    Enter code
+            </BFUText>
+        </BFUStackItem>
+        <BFUStackItem>
+            <BFUStack Horizontal=true
+                      Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 8.0 } })>
+                <BFUStackItem>
+                    <i class="ms-Icon ms-Icon--NumberField" 
+                       style="font-size:19px;"
+                       aria-hidden="true"></i>
+                </BFUStackItem>
+                <BFUStackItem>
+                    <BFUText Variant=@TextType.Medium>
+                        Please type in the code displayed on your authenticator app from your device.
+                    </BFUText>
+                </BFUStackItem>
+            </BFUStack>
+        </BFUStackItem>
+        <BFUStackItem Style="margin-top:30px;">
+            <BFUTextField Placeholder="Code"
+                          Underlined="true"
+                          @bind-Value=@TOTPRequest.Code />
+        </BFUStackItem>
+        <BFUStackItem  Style="margin-top:30px;"
+                        Align=@Alignment.End>
+            <BFUPrimaryButton Text="Verify"
+                              OnClick=@VerifyTOTPCode
+                              Style="font-size:12px;" />
+        </BFUStackItem>
+    </BFUStack>
+</div>
+
+@code {
+    [Parameter]
+    public long UserId { get; set; }
+
+    [Parameter]
+    public EventCallback<MFAToken> OnVerified { get; set; }
+
+    TOTPRequest TOTPRequest { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        TOTPRequest = new TOTPRequest
+        {
+            RequestorId = this.UserId
+        };
+        await base.OnParametersSetAsync();
+    }
+
+    bool isVerificationFailed = false;
+    string verificationFailedMessage;
+
+    async Task VerifyTOTPCode()
+    {
+        HttpResponseMessage response = await Http.PutAsJsonAsync("user/totp/verify", TOTPRequest);
+        
+        if(response.IsSuccessStatusCode)
+        {
+            MFAToken mfaToken = await response.Content.ReadFromJsonAsync<MFAToken>();
+            await OnVerified.InvokeAsync(mfaToken);
+        }
+        else
+        {
+            isVerificationFailed = true;
+            switch(response.StatusCode)
+            {
+                case HttpStatusCode.NotFound:
+                    verificationFailedMessage = "The user was not found.";
+                    break;
+                case HttpStatusCode.BadRequest:
+                    verificationFailedMessage = await response.Content.ReadAsStringAsync();
+                    break;
+                default:
+                    string message = await response.Content.ReadAsStringAsync();
+                    verificationFailedMessage = $"An error occured: {message}.";
+                    break;
+            }
+        }
+    }
+}

@@ -1,0 +1,246 @@
+@layout EmptyLayout
+@page "/mfa"
+
+@using Polly
+@using System.Net
+@using System.Net.Http
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using FinanceApp.Shared.Classes
+@inject IAccessTokenProvider TokenProvider
+@inject IHttpClientFactory ClientFactory
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+@if(!string.IsNullOrEmpty(message)) {
+    <BFUMessageBar MessageBarType=@messageType>
+        @message
+    </BFUMessageBar>
+}
+
+<div style="height:100%;width:100%;display:flex;align-items:center;justify-content:center;">
+@if(graphUser != null)
+{
+    @if(user != null)
+    {
+        if(totpStage == TOTPStage.Registration)
+        {
+            <BFUStack Horizontal="true">
+                <BFUStackItem>
+                    @if(!string.IsNullOrEmpty(user.TOTPSecret))
+                    {
+                        <QRCode Label="@user.Email"
+                                Secret="@user.TOTPSecret"
+                                Size="280">
+                        </QRCode>
+                    }
+                    else
+                    {
+                        <BFUSpinner Label="Generating QR code..."
+                                    LabelPosition=@SpinnerLabelPosition.Bottom
+                                    Size=@SpinnerSize.Medium>
+                        </BFUSpinner>
+                    }
+                </BFUStackItem>
+                <BFUStackItem>
+                    <BFUStack VerticalFill="true"
+                              Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "15px" })>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Large
+                                    Style="font-weight:700;">
+                                    Additional security verification
+                            </BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>
+                                Secure your account by enabling <span style="font-weight:bold;">Multi-Factor Authentication</span>.
+                            </BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>Complete the following steps to configure Microsoft authenticator app.</BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUStack Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "10px 0 10px 20px" })>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>1. Install the Microsoft authenticator app for Windows Phone, Andriod or iOs.</BFUText>
+                                </BFUStackItem>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>2. In the app, add an account and choose "Work or school account".</BFUText>
+                                </BFUStackItem>
+                                <BFUStackItem>
+                                    <BFUText Variant=@TextType.Small>3. Scan the QR code on the side.</BFUText>
+                                </BFUStackItem>
+                            </BFUStack>
+                        </BFUStackItem>
+                        <BFUStackItem>
+                            <BFUText Variant=@TextType.Small>If the app displays a six-digit code, you are done!</BFUText>
+                        </BFUStackItem>
+                        <BFUStackItem Align=@Alignment.End>
+                            <BFUPrimaryButton Text="Next"
+                                              OnClick=@SkipToVerifyRegisteredMFA
+                                              Style="font-size:12px;">
+                            </BFUPrimaryButton>
+                        </BFUStackItem>
+                    </BFUStack>
+                </BFUStackItem>
+            </BFUStack>
+        }
+        else if (totpStage == TOTPStage.Verify)
+        {
+            <TOTPVerification UserId="@user.Id"
+                              OnVerified=@TOTPVerified>
+            </TOTPVerification>
+        }
+        else if (totpStage == TOTPStage.TaggingRegistered)
+        {
+            <BFUSpinner Label="Finalizing..."
+                        LabelPosition=@SpinnerLabelPosition.Bottom
+                        Size=@SpinnerSize.Medium>
+            </BFUSpinner>
+        }
+        else if (totpStage == TOTPStage.Done)
+        {
+            <RedirectToMain />
+        }
+    }
+    else
+    {
+        <BFUSpinner Label="Loading..."
+                    LabelPosition=@SpinnerLabelPosition.Bottom
+                    Size=@SpinnerSize.Medium>
+        </BFUSpinner>
+    }
+}
+else
+{
+    <BFUSpinner Label="Loading..."
+                LabelPosition=@SpinnerLabelPosition.Bottom
+                Size=@SpinnerSize.Medium>
+    </BFUSpinner>
+}
+</div>
+
+@code {
+    string message;
+    MessageBarType messageType;
+    GraphUser graphUser;
+    User user;
+    bool isUserInfoLoaded = false;
+    TOTPStage totpStage;
+    MFAToken mfaToken;
+
+    protected override async Task OnInitializedAsync()
+    {
+        graphUser = await GetGraphUser();
+        user = await GetUserAsync(graphUser);
+        
+        if(user != null)
+        {
+            if(!user.HasRegisteredMFA)
+            {
+                totpStage = TOTPStage.Registration;
+            }
+            else if(user.EnableMFA)
+            {
+                totpStage = TOTPStage.Verify;
+            }
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    async Task<GraphUser> GetGraphUser()
+    {
+        var retryPolicy = Policy.Handle<NullReferenceException>()
+                                .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromSeconds(0.5));
+                                
+        AccessTokenResult tokenResult = await TokenProvider.RequestAccessToken(
+                new AccessTokenRequestOptions
+                {
+                    Scopes = new[] { "https://graph.microsoft.com/User.Read" }
+                });
+
+        if (tokenResult.TryGetToken(out var token))
+        {
+            var client = ClientFactory.CreateClient("GraphAPI");
+            return await retryPolicy.ExecuteAsync(async () => await client.GetFromJsonAsync<GraphUser>("v1.0/me"));
+        }
+
+        return default;
+    }
+
+    async Task<User> GetUserAsync(GraphUser graphUser)
+    {
+        Guid accountId = graphUser.AccountId;
+        string email = graphUser.Mail;
+
+        try
+        {
+            return await Http.GetFromJsonAsync<User>($"user/account/{accountId}");
+        }
+        catch (HttpRequestException ex)
+        {
+            if(ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                User user = new User
+                {
+                    AccountId = accountId,
+                    Email = email
+                };
+
+                return await AddUserAsync(user);
+            }
+            else
+            {
+                throw ex;
+            }
+        }
+    }
+
+    async Task<User> AddUserAsync(User user)
+    {
+        var response = await Http.PostAsJsonAsync("user", user);
+        
+        if(response.IsSuccessStatusCode) {
+            user = await response.Content.ReadFromJsonAsync<User>();
+            messageType = MessageBarType.Info;
+            message = $"Account {user.Email} was added.";
+            
+            return user;
+        }
+        else
+        {
+            messageType = MessageBarType.Error;
+            message = await response.Content.ReadAsStringAsync();
+            return default;
+        }
+    }
+
+    Task SkipToVerifyRegisteredMFA()
+    {
+        totpStage = TOTPStage.Verify;
+        return Task.CompletedTask;
+    }
+
+    async Task TOTPVerified(MFAToken token)
+    {
+        await sessionStorage.SetItemAsync<MFAToken>("MFAToken", token);
+
+        if(!user.HasRegisteredMFA)
+        {
+            totpStage = TOTPStage.TaggingRegistered;
+            // Note: Tag user as registered to MFA
+            await Http.PutAsJsonAsync<User>("user/mfa/register", user);
+        }
+
+        totpStage = TOTPStage.Done;
+        mfaToken = token;
+    }
+
+    private enum TOTPStage
+    {
+        Registration,
+        Verify,
+        TaggingRegistered,
+        Done
+    }
+}

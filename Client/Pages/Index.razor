@@ -2,4 +2,15 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
-<span>Hello, world!</span>
+<ValidateMFA />
+<BFUStack Horizontal="true"
+          VerticalFill="true"
+          Wrap="true"
+          Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 20.0 } })
+          Style="padding-top:50px;box-sizing:border-box;">
+    @for(var i=0; i<5; i++) {
+        <BFUStackItem>
+            <AccountCard />
+        </BFUStackItem>
+    }
+</BFUStack>
