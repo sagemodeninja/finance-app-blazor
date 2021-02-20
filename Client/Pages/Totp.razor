@@ -9,25 +9,34 @@
 @inject HttpClient Http
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
-<p>TOTP Demo</p>
+@if(!string.IsNullOrEmpty(message)) {
+    <BFUMessageBar MessageBarType=@messageType>
+        @message
+    </BFUMessageBar>
+}
+
+<div style="height:100%;width:100%;display:flex;align-items:center;justify-content:center;">
 @if(graphUser != null)
 {
-    if(!string.IsNullOrEmpty(message)) {
-        <div>
-            <p><span><b>Message:</b></span> @message</p>
-        </div>
-    }
-
     @if(user != null)
     {
-        if(!user.HasRegisteredMFA)
+        if(totpStage == TOTPStage.Registration)
         {
-            <div style="height:100%;width:100%;display:flex;align-items:center;justify-content:center;">
             <BFUStack Horizontal="true">
                 <BFUStackItem>
-                    <QRCode Label="@user.Email"
-                            Secret="@user.TOTPSecret"
-                            Size="280" />
+                    @if(!string.IsNullOrEmpty(user.TOTPSecret))
+                    {
+                        <QRCode Label="@user.Email"
+                                Secret="@user.TOTPSecret"
+                                Size="280" />
+                    }
+                    else
+                    {
+                        <BFUSpinner Label="Generating QR code..."
+                                    LabelPosition=@SpinnerLabelPosition.Bottom
+                                    Size=@SpinnerSize.Medium>
+                        </BFUSpinner>
+                    }
                 </BFUStackItem>
                 <BFUStackItem>
                     <BFUStack VerticalFill="true"
@@ -44,7 +53,7 @@
                             </BFUText>
                         </BFUStackItem>
                         <BFUStackItem>
-                            <BFUText Variant=@TextType.Small>Complete the following steps to configure MFA through authenticator app.</BFUText>
+                            <BFUText Variant=@TextType.Small>Complete the following steps to configure Microsoft authenticator app.</BFUText>
                         </BFUStackItem>
                         <BFUStackItem>
                             <BFUStack Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 }, Padding = "10px 0 10px 20px" })>
@@ -64,40 +73,37 @@
                         </BFUStackItem>
                         <BFUStackItem Align=@Alignment.End>
                             <BFUPrimaryButton Text="Next"
+                                              OnClick=@SkipToVerifyRegisteredMFA
                                               Style="font-size:12px;" />
                         </BFUStackItem>
                     </BFUStack>
                 </BFUStackItem>
             </BFUStack>
-            </div>
-
-            if(mfaToken is null) {
-                @* <BFUDefaultButton Text="Generate MFA Token"
-                                OnClick=@GenerateMFATokenAsync /> *@
-            }
-            else
-            {
-                @* <BFUStack Horizontal="true"
-                          Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
-                    <BFUStackItem>
-                        <BFUDefaultButton Text="Validate MFA Token"
-                                        OnClick=@ValidateMFATokenAsync />
-                    </BFUStackItem>
-                    <BFUStackItem>
-                        <BFUDefaultButton Text="Clear MFA Token"
-                                        OnClick=@ClearMFATokenAsync />
-                    </BFUStackItem>
-                </BFUStack> *@
-            }
-
         }
-        else if (user.EnableMFA)
+        else if (totpStage == TOTPStage.Verify)
         {
-            <p>Ready for MFA!</p>
+            <TOTPVerification UserId="@user.Id"
+                              OnVerified=@TOTPVerified></TOTPVerification>
+        }
+        else if (totpStage == TOTPStage.Done)
+        {
+            <BFUStack Horizontal="true"
+                        Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
+                <BFUStackItem>
+                    <BFUDefaultButton Text="Validate MFA Token"
+                                    OnClick=@ValidateMFATokenAsync>
+                    </BFUDefaultButton>
+                </BFUStackItem>
+                <BFUStackItem>
+                    <BFUDefaultButton Text="Clear MFA Token"
+                                    OnClick=@ClearMFATokenAsync>
+                    </BFUDefaultButton>
+                </BFUStackItem>
+            </BFUStack>
         }
         else
         {
-            <p>MFA is disabled!</p>
+            <p>Wait what!?</p>
         }
     }
     else
@@ -115,24 +121,33 @@ else
                 Size=@SpinnerSize.Medium>
     </BFUSpinner>
 }
+</div>
 
 @code {
+    string message;
+    MessageBarType messageType;
     GraphUser graphUser;
     User user;
-    string message;
     bool isUserInfoLoaded = false;
+    TOTPStage totpStage;
     MFAToken mfaToken;
 
     protected override async Task OnInitializedAsync()
     {
         graphUser = await GetGraphUser();
-        user = new User
-        {
-            AccountId = graphUser.AccountId,
-            Email = graphUser.Mail
-        };
-
         user = await GetUserAsync(graphUser);
+        
+        if(user != null)
+        {
+            if(!user.HasRegisteredMFA)
+            {
+                totpStage = TOTPStage.Registration;
+            }
+            else if(user.EnableMFA)
+            {
+                totpStage = TOTPStage.Verify;
+            }
+        }
 
         mfaToken = await sessionStorage.GetItemAsync<MFAToken>("MFAToken");
         await base.OnInitializedAsync();
@@ -189,24 +204,33 @@ else
     async Task<User> AddUserAsync(User user)
     {
         var response = await Http.PostAsJsonAsync("user", user);
-        user = await response.Content.ReadFromJsonAsync<User>();
         
-        message = $"Account {user.Email} was added.";
-        return user;
-    }
-
-    async Task GenerateMFATokenAsync()
-    {
-        if(user != null) {
-            mfaToken = await Http.GetFromJsonAsync<MFAToken>($"user/mfatoken/generate/{user.AccountId}");
-            await sessionStorage.SetItemAsync<MFAToken>("MFAToken", mfaToken);
-
-            message = "MFA token was created.";
+        if(response.IsSuccessStatusCode) {
+            user = await response.Content.ReadFromJsonAsync<User>();
+            messageType = MessageBarType.Info;
+            message = $"Account {user.Email} was added.";
+            
+            return user;
         }
         else
         {
-            message = "Error: User object is null.";
+            messageType = MessageBarType.Error;
+            message = await response.Content.ReadAsStringAsync();
+            return default;
         }
+    }
+
+    Task SkipToVerifyRegisteredMFA()
+    {
+        totpStage = TOTPStage.Verify;
+        return Task.CompletedTask;
+    }
+
+    async Task TOTPVerified(MFAToken token)
+    {
+        totpStage = TOTPStage.Done;
+        await sessionStorage.SetItemAsync<MFAToken>("MFAToken", token);
+        mfaToken = token;
     }
 
     async Task ValidateMFATokenAsync()
@@ -216,10 +240,12 @@ else
             MFAToken token = await response.Content.ReadFromJsonAsync<MFAToken>();
             
             string isValid = token.IsValid ? "is" : "is not";
+            messageType = MessageBarType.Info;
             message = $"MFA Token {isValid} valid.";
         }
         else
         {
+            messageType = MessageBarType.Error;
             message = "Error: User object is null.";
         }
     }
@@ -228,6 +254,14 @@ else
     {
         await sessionStorage.RemoveItemAsync("MFAToken");
         mfaToken = null;
+        messageType = MessageBarType.Info;
         message = "MFA token was cleared.";
+    }
+
+    private enum TOTPStage
+    {
+        Registration,
+        Verify,
+        Done
     }
 }

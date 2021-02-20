@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using OtpNet;
 using FinanceApp.Server.Data;
 using FinanceApp.Server.Classes;
 using FinanceApp.Shared.Models;
@@ -43,6 +44,14 @@ namespace FinanceApp.Server.Controllers
             User user = _dbContext.Users.SingleOrDefault(u => u.AccountId == accountId);
             if(user != null)
             {
+                // Note: GetByAccountId() is an endpoint that is expicted to expose a user's TOTP secret.
+                // To avoid abuse this check is enforced.
+                if(user.HasRegisteredMFA)
+                {
+                    // Note: TOTPSecret is cleared so it wouldn't get leaked.
+                    user.TOTPSecret = null;
+                }
+
                 return Ok(user);
             }
             else
@@ -54,29 +63,71 @@ namespace FinanceApp.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> AddUser(User user)
         {
-            // Generate TOTP secret based on account id and hash key.
-            user.TOTPSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
+            // Note: AddUser() is an endpoint that exposes a user's TOTP secret.
+            // To avoid abuse, be it unecessary, this check is enforced.
+            if(!_dbContext.Users.Any(u => u.AccountId == user.AccountId))
+            {
+                // Generate TOTP secret based on account id and hash key.
+                user.TOTPSecret = await GenerateUserTOTPSecretAsync(user.AccountId, _options.TOTPHashKey);
 
-            _dbContext.Users.Add(user);
-            await _dbContext.SaveChangesAsync();
-            
-            return Ok(user);
+                _dbContext.Users.Add(user);
+                await _dbContext.SaveChangesAsync();
+                
+                return Ok(user);
+            }
+            else
+            {
+                return BadRequest("User already exists.");
+            }
         }
 
-        [HttpGet]
-        [Route("mfatoken/generate/{identity:guid}")]
-        public async Task<IActionResult> GenerateMFAToken(Guid identity)
+        [HttpPut]
+        [Route("totp/verify")]
+        public async Task<IActionResult> VerifyTOTPCode(TOTPRequest request)
         {
-            MFAToken token = await MFAToken.GenerateAsync(identity.ToString(), _options.MFATokenHashKey);
-            return Ok(token);
+            User user = _dbContext.Users.SingleOrDefault(u => u.Id == request.RequestorId);
+            if(user is null)
+                return NotFound("User does not exist.");
+
+            byte[] totpSecret = Base32Encoding.ToBytes(user.TOTPSecret);
+            Totp totp = new Totp(totpSecret);
+
+            bool isValid = totp.VerifyTotp(request.Code, out var timeStepMatched);
+            if(isValid)
+            {
+                MFAToken token = await MFAToken.GenerateAsync(user.AccountId, user.TOTPSecret);
+                return Ok(token);
+            }
+            else
+            {
+                return BadRequest("Code is invalid.");
+            }
         }
 
         [HttpPut]
         [Route("mfatoken/validate")]
         public async Task<IActionResult> ValidateMFAToken(MFAToken token)
         {
-            await token.ValidateAsync(_options.MFATokenHashKey);
+            Guid identity = token.Identity;
+            User user = _dbContext.Users.SingleOrDefault(u => u.AccountId == identity);
+
+            if(user is null)
+                return NotFound();
+
+            await token.ValidateAsync(user.TOTPSecret);
             return Ok(token);
+        }
+
+        [HttpPut]
+        [Route("mfa/register")]
+        public async Task<IActionResult> TagRegisteredMFA(User user)
+        {
+            user.HasRegisteredMFA = true;
+            user.EnableMFA = false;
+            _dbContext.Users.Update(user);
+            
+            await _dbContext.SaveChangesAsync();
+            return Ok();
         }
 
         private static async Task<string> GenerateUserTOTPSecretAsync(Guid accountId, string hashKey)
@@ -90,7 +141,7 @@ namespace FinanceApp.Server.Controllers
                 Stream stream = new MemoryStream(plainTextBytes);
                 byte[] hashValue = await sha256.ComputeHashAsync(stream);
 
-                return Convert.ToBase64String(hashValue);
+                return Base32Encoding.ToString(hashValue);
             }
         }
     }

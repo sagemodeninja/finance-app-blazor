@@ -8,7 +8,7 @@ namespace FinanceApp.Shared.Classes
 {
     public class MFAToken
     {
-        public string Identity { get; set; }
+        public Guid Identity { get; set; }
 
         public string SessionId { get; set; }
 
@@ -18,7 +18,7 @@ namespace FinanceApp.Shared.Classes
 
         public bool IsValid { get; set; }
 
-        public static async Task<MFAToken> GenerateAsync(string identity, string hashKey)
+        public static async Task<MFAToken> GenerateAsync(Guid identity, string hashKey)
         {
             string sessionId = Guid.NewGuid().ToString();
             DateTime dateIssued = DateTime.Now;
