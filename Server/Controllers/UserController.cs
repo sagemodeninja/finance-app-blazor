@@ -32,12 +32,6 @@ namespace FinanceApp.Server.Controllers
         static readonly string[] scopeRequiredByApi = new string[] { "api.access" };
 
         [HttpGet]
-        public async Task<IActionResult> GetById()
-        {
-            throw new NotImplementedException();
-        }
-
-        [HttpGet]
         [Route("account/{accountId:guid}")]
         public IActionResult GetByAccountId(Guid accountId)
         {

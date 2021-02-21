@@ -5,7 +5,7 @@ using Microsoft.Identity.Web.Resource;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using FinanceApp.Server.Data;
-using FinanceApp.Server.Models;
+using FinanceApp.Shared.Models;
 
 namespace FinanceApp.Server.Controllers 
 {

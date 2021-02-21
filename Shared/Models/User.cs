@@ -19,5 +19,8 @@ namespace FinanceApp.Shared.Models
         public bool HasRegisteredMFA { get; set; }
         
         public bool EnableMFA { get; set; }
+
+        #region Navigation Properties
+        #endregion Navigation Properties
     }
 }

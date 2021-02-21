@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using FinanceApp.Server.Models;
 using FinanceApp.Shared.Models;
 
 namespace FinanceApp.Server.Data {
@@ -11,12 +10,17 @@ namespace FinanceApp.Server.Data {
         }
 
         public DbSet<Category> Categories { get; set; }
+
+        public DbSet<AccountVendor> AccountVendors { get; set; }
+
         public DbSet<Account> Accounts { get; set; }
+        
         public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Category>().ToTable("Category");
+            modelBuilder.Entity<AccountVendor>().ToTable("AccountVendor");
             modelBuilder.Entity<Account>().ToTable("Account");
             modelBuilder.Entity<User>().ToTable("User");
         }
