@@ -75,7 +75,7 @@
 
     async Task VerifyTOTPCode()
     {
-        HttpResponseMessage response = await Http.PutAsJsonAsync("user/totp/verify", TOTPRequest);
+        HttpResponseMessage response = await Http.PutAsJsonAsync("api/user/totp/verify", TOTPRequest);
         
         if(response.IsSuccessStatusCode)
         {

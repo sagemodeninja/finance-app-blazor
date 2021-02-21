@@ -16,7 +16,7 @@ namespace FinanceApp.Server.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
         private readonly FinanceAppContext _dbContext;

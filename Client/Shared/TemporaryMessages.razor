@@ -23,8 +23,9 @@ else
         _tempLinks = new List<TempLinks>
         {
             new TempLinks("Index", "/"),
+            new TempLinks("Category", "/category"),
+            new TempLinks("Account Vendor", "/accountvendor"),
             new TempLinks("Account", "/accounts"),
-            new TempLinks("TOTP demo", "/totp")
         };
 
         return base.OnInitializedAsync();
