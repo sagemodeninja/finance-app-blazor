@@ -6,11 +6,12 @@ Track finances.
 
 + Azure AD SSO.
 + TOTP based MFA.
++ Account vendor list.
 + Track finances.
 
 ### Credits
 
-Copyright © 2020 Gary Antier.
+Copyright © 2021 Gary Antier.
 
 ### License
 
