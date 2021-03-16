@@ -8,12 +8,7 @@ namespace FinanceApp.Shared.Models
         public long Id { get; set; }
 
         [MaxLength(100)]
-        public string Title { get; set; }
-
-        [MaxLength(6)]
-        public string Color { get; set; }
-
-        public int Order { get; set; }
+        public string Name { get; set; }
 
         public long UserId { get; set; }
 
