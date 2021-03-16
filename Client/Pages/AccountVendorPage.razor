@@ -12,11 +12,11 @@
 
 <BFUDetailsList ItemsSource=@accountVendors
                 Columns="Columns"
-                GetKey=@(vendor=>vendor.Id)
+                GetKey=@(vendor => vendor.Id)
                 LayoutMode=@DetailsListLayoutMode.Justified
                 OnItemInvoked=@OpenEditPanel
-                Selection="selection"
                 TItem="AccountVendor"
+                Selection="selection"
                 SelectionMode=@SelectionMode.Multiple>
 </BFUDetailsList>
 
@@ -46,7 +46,18 @@
                             AutoComplete=@AutoComplete.Off />
             </BFUStackItem>
             <BFUStackItem Align=@Alignment.End>
-                <BFUSubmitButton Text=@(modelState == ModelState.Create ? "Add Vendor" : "Save Changes") />
+                <BFUStack Horizontal="true"
+                        Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
+                    <BFUStackItem>
+                        <BFUPrimaryButton ClassName="delete-button"
+                                        Text="Delete"
+                                        Disabled=@(modelState == ModelState.Create)
+                                        OnClick=@OpenDeleteDialog />
+                    </BFUStackItem>
+                    <BFUStackItem>
+                        <BFUSubmitButton Text=@(modelState == ModelState.Create ? "Add Vendor" : "Save Changes") />
+                    </BFUStackItem>
+                </BFUStack>
             </BFUStackItem>
         </BFUStack>
         
@@ -54,10 +65,30 @@
 
 </BFUPanel>
 
+<BFUDialog Title="Delete account vendor?"
+        SubText=@deleteDialogText
+        IsOpen=@isDeleteDialogOpen
+        IsBlocking="false"
+        OnDismiss=@DismissDeleteDialog>
+    <ChildContent>
+    </ChildContent>
+    <FooterTemplate>
+        <BFUDefaultButton Text="Cancel"
+                        OnClick=@DismissDeleteDialog />
+        <BFUPrimaryButton ClassName="delete-button"
+                        Text="Delete"
+                        OnClick=@DeleteAccountVendor />
+    </FooterTemplate>
+</BFUDialog>
+
 @code {
     string debugMessage;
 
+    string deleteDialogText;
+
     bool isVendorPanelOpen = false;
+
+    bool isDeleteDialogOpen = false;
 
     AccountVendor accountVendorModel = new AccountVendor();
 
@@ -102,7 +133,6 @@
 
     Task DismissCreatePanel()
     {
-        ClearModel();
         isVendorPanelOpen = false;
         return Task.CompletedTask;
     }
@@ -131,6 +161,42 @@
         ClearModel(vendor);
         modelState = ModelState.Update;
         isVendorPanelOpen = true;
+    }
+
+    Task OpenDeleteDialog(MouseEventArgs args)
+    {
+        string accountVendor = accountVendorModel.Name;
+        deleteDialogText = $"This will remove \"{accountVendor}\" from the records.";
+        isDeleteDialogOpen = true;
+
+        return Task.CompletedTask;
+    }
+
+    Task DismissDeleteDialog()
+    {
+        isDeleteDialogOpen = false;
+        isVendorPanelOpen = true; // Re-open panel...
+        return Task.CompletedTask;
+    }
+
+    async Task DeleteAccountVendor()
+    {
+        string endpoint = $"api/accountvendor/{accountVendorModel.Id}";
+        HttpResponseMessage response = await Http.DeleteAsync(endpoint);
+
+        if(response.IsSuccessStatusCode)
+        {
+            isDeleteDialogOpen = false;
+            accountVendorModel = null;
+            await DismissCreatePanel();
+            await RefreshItemSource();
+        }
+        else
+        {
+            isDeleteDialogOpen = true;
+            string error = await response.Content.ReadAsStringAsync();
+            debugMessage = $"{response.StatusCode.ToString()}: {error}";
+        }
     }
 
     private enum ModelState
