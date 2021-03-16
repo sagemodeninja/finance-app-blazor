@@ -1,4 +1,4 @@
-namespace FinanceApp.Server.Enums {
+namespace FinanceApp.Shared.Enums {
     public enum AccountStatus {
         Inactive,
         Active,

@@ -1,0 +1,207 @@
+@page "/accountvendor"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@using FinanceApp.Shared.Models
+@inject HttpClient Http
+
+<ValidateMFA />
+
+<BFUPrimaryButton Text="Add Vendor"
+                  OnClick=@OpenCreatePanel />
+
+<BFUDetailsList ItemsSource=@accountVendors
+                Columns="Columns"
+                GetKey=@(vendor => vendor.Id)
+                LayoutMode=@DetailsListLayoutMode.Justified
+                OnItemInvoked=@OpenEditPanel
+                TItem="AccountVendor"
+                Selection="selection"
+                SelectionMode=@SelectionMode.Multiple>
+</BFUDetailsList>
+
+<BFUPanel IsOpen=@isVendorPanelOpen
+        OnDismiss=@DismissCreatePanel
+        Type=@PanelType.SmallFixedFar
+        IsLightDismiss="true"
+        HeaderText=@(modelState == ModelState.Create ? "Add Account Vendor" : "Edit Account Vendor")>
+
+    @if(!string.IsNullOrEmpty(debugMessage))
+    {
+        <BFUMessageBar MessageBarType=@MessageBarType.Info>
+            @debugMessage
+        </BFUMessageBar>
+    }
+    
+    <EditForm Model=@accountVendorModel
+            OnValidSubmit=@HandleValidSumbit>
+        <DataAnnotationsValidator />
+
+        <BFUStack Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
+            <BFUStackItem>
+                <BFUTextField Label="Name"
+                            Placeholder="Name"
+                            @bind-Value=@accountVendorModel.Name
+                            @bind-Value:event="OnInput"
+                            AutoComplete=@AutoComplete.Off />
+            </BFUStackItem>
+            <BFUStackItem Align=@Alignment.End>
+                <BFUStack Horizontal="true"
+                        Tokens=@(new BFUStackTokens { ChildrenGap = new[] { 10.0 } })>
+                    <BFUStackItem>
+                        <BFUPrimaryButton ClassName="delete-button"
+                                        Text="Delete"
+                                        Disabled=@(modelState == ModelState.Create)
+                                        OnClick=@OpenDeleteDialog />
+                    </BFUStackItem>
+                    <BFUStackItem>
+                        <BFUSubmitButton Text=@(modelState == ModelState.Create ? "Add Vendor" : "Save Changes") />
+                    </BFUStackItem>
+                </BFUStack>
+            </BFUStackItem>
+        </BFUStack>
+        
+    </EditForm>
+
+</BFUPanel>
+
+<BFUDialog Title="Delete account vendor?"
+        SubText=@deleteDialogText
+        IsOpen=@isDeleteDialogOpen
+        IsBlocking="false"
+        OnDismiss=@DismissDeleteDialog>
+    <ChildContent>
+    </ChildContent>
+    <FooterTemplate>
+        <BFUDefaultButton Text="Cancel"
+                        OnClick=@DismissDeleteDialog />
+        <BFUPrimaryButton ClassName="delete-button"
+                        Text="Delete"
+                        OnClick=@DeleteAccountVendor />
+    </FooterTemplate>
+</BFUDialog>
+
+@code {
+    string debugMessage;
+
+    string deleteDialogText;
+
+    bool isVendorPanelOpen = false;
+
+    bool isDeleteDialogOpen = false;
+
+    AccountVendor accountVendorModel = new AccountVendor();
+
+    ModelState modelState = ModelState.Create;
+
+    List<AccountVendor> accountVendors = new List<AccountVendor>();
+
+    public List<BFUDetailsRowColumn<AccountVendor>> Columns = new List<BFUDetailsRowColumn<AccountVendor>>();
+
+    Selection<AccountVendor> selection = new Selection<AccountVendor>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        selection.GetKey = (vendor => vendor.Id);
+        Columns.Add(new BFUDetailsRowColumn<AccountVendor>("Id", v => v.Id) { Index = 1 });
+        Columns.Add(new BFUDetailsRowColumn<AccountVendor>("Name", v => v.Name) { Index = 2 });
+
+        // Fetch list of vendors...
+        await RefreshItemSource();
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task RefreshItemSource()
+    {
+        accountVendors = await Http.GetFromJsonAsync<List<AccountVendor>>("api/accountvendor");
+    }
+
+    private void ClearModel(AccountVendor newModel = null)
+    {
+        accountVendorModel = newModel ?? new AccountVendor();
+        debugMessage = null;
+    }
+
+    Task OpenCreatePanel()
+    {
+        ClearModel();
+        modelState = ModelState.Create;
+        isVendorPanelOpen = true;
+        return Task.CompletedTask;
+    }
+
+    Task DismissCreatePanel()
+    {
+        isVendorPanelOpen = false;
+        return Task.CompletedTask;
+    }
+
+    public async Task HandleValidSumbit()
+    {
+        HttpResponseMessage response = modelState == ModelState.Create
+            ? await Http.PostAsJsonAsync<AccountVendor>("api/accountvendor", accountVendorModel)
+            : await Http.PutAsJsonAsync<AccountVendor>("api/accountvendor", accountVendorModel);
+
+        if(response.IsSuccessStatusCode)
+        {
+            accountVendorModel = await response.Content.ReadFromJsonAsync<AccountVendor>();
+            await DismissCreatePanel();
+            await RefreshItemSource();
+        }
+        else
+        {
+            string error = await response.Content.ReadAsStringAsync();
+            debugMessage = $"{response.StatusCode.ToString()}: {error}";
+        }
+    }
+
+    void OpenEditPanel(AccountVendor vendor)
+    {
+        ClearModel(vendor);
+        modelState = ModelState.Update;
+        isVendorPanelOpen = true;
+    }
+
+    Task OpenDeleteDialog(MouseEventArgs args)
+    {
+        string accountVendor = accountVendorModel.Name;
+        deleteDialogText = $"This will remove \"{accountVendor}\" from the records.";
+        isDeleteDialogOpen = true;
+
+        return Task.CompletedTask;
+    }
+
+    Task DismissDeleteDialog()
+    {
+        isDeleteDialogOpen = false;
+        isVendorPanelOpen = true; // Re-open panel...
+        return Task.CompletedTask;
+    }
+
+    async Task DeleteAccountVendor()
+    {
+        string endpoint = $"api/accountvendor/{accountVendorModel.Id}";
+        HttpResponseMessage response = await Http.DeleteAsync(endpoint);
+
+        if(response.IsSuccessStatusCode)
+        {
+            isDeleteDialogOpen = false;
+            accountVendorModel = null;
+            await DismissCreatePanel();
+            await RefreshItemSource();
+        }
+        else
+        {
+            isDeleteDialogOpen = true;
+            string error = await response.Content.ReadAsStringAsync();
+            debugMessage = $"{response.StatusCode.ToString()}: {error}";
+        }
+    }
+
+    private enum ModelState
+    {
+        Create,
+        Update
+    }
+}

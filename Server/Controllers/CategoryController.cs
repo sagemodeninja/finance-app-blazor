@@ -5,14 +5,14 @@ using Microsoft.Identity.Web.Resource;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using FinanceApp.Server.Data;
-using FinanceApp.Server.Models;
+using FinanceApp.Shared.Models;
 
 namespace FinanceApp.Server.Controllers 
 {
 
     [Authorize]
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class CategoryController : ControllerBase 
     {
         private readonly FinanceAppContext _dbContext;

@@ -14,7 +14,7 @@
         }
         else
         {
-            var response = await Http.PutAsJsonAsync<MFAToken>("user/mfatoken/validate", token);
+            var response = await Http.PutAsJsonAsync<MFAToken>("api/user/mfatoken/validate", token);
             if(response.IsSuccessStatusCode)
             {
                 token = await response.Content.ReadFromJsonAsync<MFAToken>();

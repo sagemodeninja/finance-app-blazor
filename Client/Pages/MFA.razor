@@ -124,7 +124,6 @@ else
     MessageBarType messageType;
     GraphUser graphUser;
     User user;
-    bool isUserInfoLoaded = false;
     TOTPStage totpStage;
     MFAToken mfaToken;
 
@@ -175,7 +174,7 @@ else
 
         try
         {
-            return await Http.GetFromJsonAsync<User>($"user/account/{accountId}");
+            return await Http.GetFromJsonAsync<User>($"api/user/account/{accountId}");
         }
         catch (HttpRequestException ex)
         {
@@ -198,7 +197,7 @@ else
 
     async Task<User> AddUserAsync(User user)
     {
-        var response = await Http.PostAsJsonAsync("user", user);
+        var response = await Http.PostAsJsonAsync("api/user", user);
         
         if(response.IsSuccessStatusCode) {
             user = await response.Content.ReadFromJsonAsync<User>();
@@ -229,7 +228,7 @@ else
         {
             totpStage = TOTPStage.TaggingRegistered;
             // Note: Tag user as registered to MFA
-            await Http.PutAsJsonAsync<User>("user/mfa/register", user);
+            await Http.PutAsJsonAsync<User>("api/user/mfa/register", user);
         }
 
         totpStage = TOTPStage.Done;

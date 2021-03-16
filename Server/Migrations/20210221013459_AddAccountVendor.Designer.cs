@@ -4,14 +4,16 @@ using FinanceApp.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FinanceApp.Server.Migrations
 {
     [DbContext(typeof(FinanceAppContext))]
-    partial class FinanceAppContextModelSnapshot : ModelSnapshot
+    [Migration("20210221013459_AddAccountVendor")]
+    partial class AddAccountVendor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,9 +55,7 @@ namespace FinanceApp.Server.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasColumnType("int");
 
                     b.Property<bool>("SubAccount")
                         .HasColumnType("bit");
@@ -79,14 +79,10 @@ namespace FinanceApp.Server.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(180)
-                        .HasColumnType("nvarchar(180)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -100,14 +96,19 @@ namespace FinanceApp.Server.Migrations
                         .HasColumnType("bigint")
                         .UseIdentityColumn();
 
-                    b.Property<string>("Name")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<string>("Color")
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
